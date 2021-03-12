@@ -1,0 +1,21 @@
+---
+- name: Install pacakges
+  package:
+    name: httpd
+    state: latest
+  become: yes
+
+- name: Enable webserver rule in firewall
+  firewalld:
+    port: 80/tcp
+    permanent: yes
+    immediate: yes
+    state: enabled
+  become: yes
+
+- name: Enable webserver
+  service:
+    name: httpd
+    state: started
+    enabled: yes
+  become: yes

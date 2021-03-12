@@ -1,0 +1,42 @@
+---
+- name: Data manipulation playbook
+  hosts: localhost
+  connection: local
+  vars:
+    apiKey: "?api_key=ZWVXShhbiCJZlR1eEHf9PTMj6Wt7wpvgAFmTCrRL"
+    endpoint: "https://api.nasa.gov/mars-photos/api/v1/"
+  tasks:
+    - name: Make a rover endpoint request
+      uri:
+        url: "{{ endpoint }}/rovers{{ apiKey }}"
+      register: response
+
+    - name: Create a rovers fact
+      set_fact: 
+        rovers: "{{ rovers | default([]) + response.json['rovers'] }}"
+
+    - name: Get latest photos from all rovers
+      uri:
+        url: "{{ endpoint }}/rovers/{{ item.name | lower }}/photos{{ apiKey }}&sol={{ item.max_sol }}"
+      loop: "{{ response.json['rovers'] }}"
+      loop_control:
+        label: "{{ item.id }}"
+      register: response_photos
+
+    - name: Setup webserver
+      include_tasks:
+        file: tasks/webserver.yaml
+
+    - name: Template index.html
+      become: yes
+      template:
+        dest: /var/www/html/index.html
+        src: index.html.j2
+      notify: Restart webserver
+
+  handlers:
+    - name: Restart webserver
+      become: yes
+      service:
+        name: httpd
+        state: restarted
